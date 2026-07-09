@@ -24,3 +24,15 @@
 - Git identity configured: user.name / user.email set globally
 
 ## Next: Phase 2 — Theme, routing, Riverpod skeleton
+## Phase 2 — DONE
+- Added flutter_riverpod (3.3.2) and go_router (17.3.0) via `flutter pub add`
+- Created lib/theme/app_colors.dart and app_theme.dart (ported from Kotlin colors.xml)
+- Created 6 stub screens: auth, launch, room, contacts, recording, export
+- Created lib/router/app_router.dart with named route constants (AppRoutes class)
+- Created lib/providers/app_info_provider.dart as Riverpod smoke test
+- Rewired lib/main.dart: ProviderScope -> MaterialApp.router -> AppTheme
+- Confirmed on physical device: navy-themed Auth stub screen renders,
+  Riverpod provider value displays correctly
+- Known warning (non-blocking, deferred): Kotlin Gradle Plugin migration notice
+
+## Next: Phase 3 — Firebase connection + Google Sign-In (Auth screen)
