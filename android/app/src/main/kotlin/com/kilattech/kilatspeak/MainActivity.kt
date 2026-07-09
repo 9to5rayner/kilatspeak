@@ -1,0 +1,5 @@
+package com.kilattech.kilatspeak
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
