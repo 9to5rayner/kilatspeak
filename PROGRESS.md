@@ -124,3 +124,45 @@ Port FirebaseRepository.kt, ContactRepository.kt, NotificationRepository.kt
 to Dart using package:firebase_database. Stream-based sendMessage/
 listenForMessages equivalents. Logic-only phase — no UI yet, verify with
 a throwaway test screen or debug prints before building real screens on top.
+## Phase 5 — DONE
+- Added firebase_database (12.4.4) package
+- Ported all three Kotlin repository classes to lib/services/:
+  - firebase_repository.dart — message send/receive for both ephemeral and
+    direct rooms. sendMessage() encrypts via RoomCrypto then writes;
+    listenForMessages() uses ref.onChildAdded stream (Dart equivalent of
+    Kotlin's ChildEventListener), filters to new/other-sender messages only,
+    decrypts, drops+logs messages that fail decryption
+  - contact_repository.dart — full contact request lifecycle (send/accept/
+    decline with the same 3-guard checks as Kotlin), direct room creation
+    on accept, 3 real-time listeners (contacts, incoming requests, sent
+    requests), email lookup/uid lookup
+  - notification_repository.dart — RTDB notification queue with
+    attachedAt-timestamp filtering (foreground-only for now, per the
+    Phase 10 free-tier decision already logged)
+- Architecture notes / decisions made during the port:
+  - Dart's firebase_database uses Streams (onChildAdded, onValue) instead
+    of Kotlin's ChildEventListener/ValueEventListener callback interfaces —
+    same semantics, different syntax
+  - No UUID package added — notification/message IDs use Firebase's own
+    ref().push().key instead of Kotlin's UUID.randomUUID(). Functionally
+    equivalent (unique, sortable) but different string format. Flagged as
+    a deliberate choice, not silently changed.
+  - Kotlin's suspend functions + suspendCancellableCoroutine map directly
+    onto plain Dart async/await Futures — no bridging layer needed
+  - Learned correct Dart initializing-formal syntax: `required this._field`
+    exposes the PUBLIC (non-underscore) name at call sites, e.g.
+    `ContactRepository(myUid: ..., myName: ..., myEmail: ...)`
+- `flutter analyze`: zero issues (errors or info-level) after fixes
+
+## UI DIRECTION NOTE (for Phase 6 onward)
+User wants the chat/messaging UI inspired by WhatsApp's layout conventions
+(familiar structure — chat list, bubble alignment, bottom input bar) for
+easy user adoption, while keeping KilatSpeak's own navy/gold/cream visual
+identity rather than copying WhatsApp's actual color scheme. Apply this
+directive starting with Phase 6 (Launch/Room screens) and especially
+Phase 9 (the core Recording/Chat screen).
+
+## Next: Phase 6 — Launch & Room screens
+API key entry (wired to SecureStorageService), language picker, room
+code generate/join (ephemeral rooms), bottom nav (Chat/Contacts) using
+go_router's StatefulShellRoute.
