@@ -92,3 +92,35 @@ Will use package:cryptography for AES-256-GCM. Two construction modes to port:
 Wire format unchanged: Base64(IV[12 bytes] || GCM-ciphertext[n+16 bytes])
 Plan: verify Dart-encrypted messages decrypt correctly, ideally cross-check against
 known test vectors rather than only round-tripping within Dart alone.
+## Phase 4b — DONE
+- Added cryptography (2.9.0) package for AES-256-GCM + PBKDF2
+- Ported RoomCrypto.kt to lib/crypto/room_crypto.dart:
+  - RoomCrypto.forRoomCode() — ephemeral rooms, PBKDF2-HMAC-SHA256 (100,000
+    iterations) lazy key derivation, memoized via cached Future<SecretKeyData>
+  - RoomCrypto.forRawKey() — direct/contact rooms, uses pre-existing 256-bit
+    key from DirectRoom.generateEncryptionKey() directly, no PBKDF2
+  - Wire format unchanged: Base64(IV[12 bytes] || GCM-ciphertext || GCM-tag[16 bytes])
+  - Uses AesGcm.with256bits() from package:cryptography
+- DECISION: PBKDF2 password encoding uses standard UTF-8, NOT guaranteed
+  byte-compatible with old Kotlin app's javax.crypto.spec.PBEKeySpec char[]
+  handling. Treated as acceptable since KilatSpeak is a fresh rewrite with
+  new users — not decrypting old Kotlin-encrypted ephemeral room messages.
+  Salt constant kept identical to Kotlin's ("com.example.groqtranscriber.roomkey")
+  since it's an internal parameter never shown to users.
+- Wrote 12 unit tests in test/crypto/room_crypto_test.dart covering:
+  round-trip encryption (both room modes), cross-instance decryption
+  (simulating two devices sharing a room code), case-insensitivity/trimming,
+  wrong-key rejection, GCM tamper detection (single-byte flip breaks
+  decryption), and malformed/truncated input handling
+- All 12 tests passing — verified via `flutter test`, no device needed
+
+## Data model + crypto layer (Phase 4a + 4b) is now complete:
+lib/models/ (8 classes), lib/services/secure_storage_service.dart,
+lib/crypto/room_crypto.dart — all ready to be wired into a real Firebase
+repository layer in Phase 5.
+
+## Next: Phase 5 — Firebase repository layer
+Port FirebaseRepository.kt, ContactRepository.kt, NotificationRepository.kt
+to Dart using package:firebase_database. Stream-based sendMessage/
+listenForMessages equivalents. Logic-only phase — no UI yet, verify with
+a throwaway test screen or debug prints before building real screens on top.
