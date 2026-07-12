@@ -62,3 +62,33 @@
   signing issues recur.
 
 ## Next: Phase 4 — Secure storage + data models
+## Phase 4a — DONE
+- Added flutter_secure_storage (10.3.1) and crypto (3.0.7) packages
+- Created lib/services/secure_storage_service.dart (equivalent of SecurePrefs.kt),
+  wraps Android Keystore / iOS Keychain via flutter_secure_storage
+- Ported 8 Kotlin data model classes to plain Dart classes in lib/models/:
+  Language, TranscriptEntry, ChatMessage, ContactEntry, ContactRequest + SentRequest,
+  DirectRoom, UserProfile, AppNotification
+- Architecture note: Dart's firebase_database has no reflection-based object
+  mapping like Kotlin's SDK (snapshot.getValue(Class)) — every model has explicit
+  toMap()/fromMap() methods instead
+- DirectRoom.computeRoomId() ported using package:crypto's sha256 (matches Kotlin's
+  MessageDigest SHA-256 exactly); generateEncryptionKey() uses Random.secure()
+  (Dart's SecureRandom equivalent)
+- Dart has no built-in data-class copy() — hand-wrote copyWith() on TranscriptEntry
+  and ChatMessage following standard Dart immutable-state conventions
+- Fixed 2 issues caught by `flutter analyze`:
+  - Removed deprecated `encryptedSharedPreferences` param (flutter_secure_storage 10.x
+    auto-migrates ciphers now, param is a no-op and being removed in v11)
+  - Fixed stale test/widget_test.dart referencing nonexistent `MyApp` class
+    (leftover from Phase 2's main.dart rewrite — analyzer wasn't run until now)
+- `flutter analyze` and `flutter test` both clean
+
+## Next: Phase 4b — Port RoomCrypto (AES-256-GCM + PBKDF2 encryption)
+Deferred to its own session — security-sensitive code deserves focused attention.
+Will use package:cryptography for AES-256-GCM. Two construction modes to port:
+  - Ephemeral rooms: PBKDF2-HMAC-SHA256 (100,000 iterations) key derivation from room code
+  - Direct rooms: raw 256-bit key (already generated in DirectRoom.generateEncryptionKey())
+Wire format unchanged: Base64(IV[12 bytes] || GCM-ciphertext[n+16 bytes])
+Plan: verify Dart-encrypted messages decrypt correctly, ideally cross-check against
+known test vectors rather than only round-tripping within Dart alone.
