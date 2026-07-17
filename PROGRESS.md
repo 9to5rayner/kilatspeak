@@ -166,3 +166,57 @@ Phase 9 (the core Recording/Chat screen).
 API key entry (wired to SecureStorageService), language picker, room
 code generate/join (ephemeral rooms), bottom nav (Chat/Contacts) using
 go_router's StatefulShellRoute.
+## Phase 6a — DONE
+- Created lib/providers/launch_settings_provider.dart using Riverpod 3.x
+  AsyncNotifier pattern (confirmed via search that StateNotifier is
+  superseded by Notifier/AsyncNotifier in Riverpod 3.x, built into core
+  package, no separate state_notifier dependency needed)
+  - LaunchSettings (apiKey + myLanguage) loaded from SecureStorageService
+    on first build(), saved together via .save() — mirrors LaunchActivity's
+    single prefs.edit()...apply() call
+- Replaced Phase 2 stub with real lib/screens/launch_screen.dart:
+  API key TextField + Indonesian/English language toggle buttons,
+  prefills from persisted settings, "Continue" saves + navigates to Room
+- DECISION ON RECORD: API key remains manual-entry only (user pastes their
+  own kie.ai key), matching the original Kotlin app. Considered embedding
+  the key at build time for the final product, but decided to defer that
+  decision — no client-side method fully hides a secret from a determined
+  attacker (only a backend proxy does); manual entry avoids building
+  throwaway embedding plumbing before distribution plans are finalized.
+- Confirmed on physical device: sign-in -> Launch screen -> enter key ->
+  Continue -> lands on Room (was still Phase 2 stub at this point)
+- Verified flutter_secure_storage self-heals automatically on a detected
+  cipher/algorithm mismatch (built-in migration, no manual intervention
+  needed) — confirms the Phase 4a decision to skip porting Kotlin's manual
+  SecurePrefs wipe-and-retry logic was correct
+
+## Phase 6b — DONE
+- Restructured lib/router/app_router.dart: Room and Contacts routes now
+  live inside a StatefulShellRoute.indexedStack (go_router's equivalent of
+  BottomNavHelper.kt's FLAG_ACTIVITY_REORDER_TO_FRONT pattern) — each tab
+  keeps its own navigation stack and widget state when switching away and
+  back. Auth/Launch/Recording/Export remain plain top-level routes outside
+  the shell, matching which Kotlin Activities did/didn't show bottom nav.
+- Created lib/widgets/bottom_nav_shell.dart: NavigationBar with Chat/
+  Contacts destinations, navy/gold/cream styled
+- Replaced Phase 2 stub with real lib/screens/room_screen.dart, ported
+  from RoomActivity.kt:
+  - Signed-in-as card with working sign-out (FirebaseAuth.signOut() +
+    GoogleSignIn.instance.disconnect(), the confirmed v7.x method from
+    the package's own official example — wrapped in try/catch since
+    disconnect() is known to throw if no active session exists)
+  - Create Room: same 5-char unambiguous-alphabet code generation logic
+    as Kotlin's generateRoomCode() (chars: ABCDEFGHJKMNPQRSTUVWXYZ23456789)
+  - Join Room: code entry field, validated to exact length
+  - Both paths navigate to /recording via context.push(..., extra: {...}),
+    passing roomCode + myLanguage forward for Phase 9 to consume
+- Confirmed on physical device: full walkthrough including tab-switch
+  state preservation (generated room code survived switching to Contacts
+  tab and back) — StatefulShellRoute working as intended
+- `flutter analyze`: zero issues
+
+## Next: Phase 7 — Contacts screen
+Port ContactsActivity.kt: incoming requests / sent requests / accepted
+contacts sections, add-contact-by-email dialog, tap-contact-to-chat flow
+(wires into ContactRepository from Phase 5). This is the screen where the
+WhatsApp-inspired chat-list layout direction actually applies.
